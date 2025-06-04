@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "rimraf ./out",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -23,7 +24,6 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
     "@hookform/resolvers": "^3.10.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20.17.57",
@@ -34,6 +34,7 @@
     "eslint-config-next": "^14.2.5",
     "gh-pages": "^6.3.0",
     "postcss": "^8.5.4",
+    "rimraf": "^6.0.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.8.3"
   }
