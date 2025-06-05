@@ -13,7 +13,11 @@ type PageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
+<<<<<<< HEAD
 const Homepage = ({}: PageProps) => {  // Remove unused searchParams
+=======
+const Homepage = ({}: PageProps) => {  
+>>>>>>> f53ac0e5fbd947c53a2bb9117ae78f639112e7aa
   return (
     
         <div className="h-screen flex">
