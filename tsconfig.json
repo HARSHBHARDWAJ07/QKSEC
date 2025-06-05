@@ -1,9 +1,6 @@
 {
   "compilerOptions": {
-<<<<<<< HEAD
-=======
     "target": "ES2017",
->>>>>>> f53ac0e5fbd947c53a2bb9117ae78f639112e7aa
     "lib": [
       "dom",
       "dom.iterable",
@@ -20,10 +17,6 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-<<<<<<< HEAD
-    "target": "ESNext",
-=======
->>>>>>> f53ac0e5fbd947c53a2bb9117ae78f639112e7aa
     "plugins": [
       {
         "name": "next"
@@ -40,13 +33,10 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-<<<<<<< HEAD
-    "next.config.js",
-=======
->>>>>>> f53ac0e5fbd947c53a2bb9117ae78f639112e7aa
     "out/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
   ]
 }
+
