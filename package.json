@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d out"
+    "deploy": "next export"
   },
   "dependencies": {
     "@types/react-big-calendar": "^1.16.0",
