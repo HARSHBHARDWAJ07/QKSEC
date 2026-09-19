@@ -1,5 +1,22 @@
-import Image from "next/image"
+"use client";
+
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { clearSession } from "@/lib/auth";
+import { useCurrentUser } from "@/lib/useCurrentUser";
+
 const Navbar = () => {
+    const router = useRouter();
+    const { user, loading } = useCurrentUser();
+
+    function handleSignOut() {
+      clearSession();
+      router.push("/sign-in");
+    }
+
+    const displayName = loading ? "..." : user ? `${user.firstName} ${user.lastName}` : "Not signed in";
+    const displayRole = loading ? "" : user ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "";
+
     return (
       <div className="flex items-center justify-between p-4">
         <div className="hidden md:flex items-center gap-2 gap-2 text-xs rounded-full ring-{1.5px} ring-gray-300 px-2"> 
@@ -16,10 +33,13 @@ const Navbar = () => {
         <div className="absolute -top-3 -right-3 w-3 h-5 flex items-center justify-center bg-purple-500 text-white rounded-full text-xs"> 1 </div>
           </div>
           <div className="flex flex-col">
-          <span className="text-xl leading-3 font-medium">    Bruce Wayne     </span>
-          <span className="text-[10px] text-gray-500-right">    Admin      </span>
+          <span className="text-xl leading-3 font-medium">{displayName}</span>
+          <span className="text-[10px] text-gray-500-right">{displayRole}</span>
           </div>
           <Image src="/avatar.png" alt="" width={36} height={36} className="rounded-full" />
+          <button type="button" onClick={handleSignOut} className="text-xs text-gray-500 hover:text-gray-900">
+            Sign out
+          </button>
         </div>
       </div>
     )

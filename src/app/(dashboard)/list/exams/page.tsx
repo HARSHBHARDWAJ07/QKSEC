@@ -1,18 +1,33 @@
+"use client";
+
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
 import FormModal from "@/components/FormModal";
 import Image from "next/image";
 import Table from "@/components/Table";
-import { examsData, role } from "@/lib/data";
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import type { PaginationMeta, ExamRecord } from "@/lib/api";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 type Exam = {
-  id: number;
+  id: number | string;
   subject: string;
-  class: number;
-  teacher: number;
+  class: number | string;
+  teacher: number | string;
   date: string;
 };
+
+function mapExam(record: ExamRecord): Exam {
+  return {
+    id: record.id,
+    subject: record.title,
+    class: record.lesson_id,
+    teacher: record.created_by ?? "-",
+    date: new Date(record.starts_at).toLocaleDateString(),
+  };
+}
 
 const columns = [
   {
@@ -40,6 +55,24 @@ const columns = [
 ];
 
 const ExamListPage = () => {
+  const { role } = useCurrentUser();
+  const [liveExams, setLiveExams] = useState<Exam[]>([]);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+
+  const fetchExams = useCallback(() => {
+    apiFetch<{ data: ExamRecord[]; meta: PaginationMeta }>(`/exams?page=${page}`)
+      .then((response) => {
+        setLiveExams(response.data.map(mapExam));
+        setMeta(response.meta);
+      })
+      .catch(() => undefined);
+  }, [page]);
+
+  useEffect(() => {
+    fetchExams();
+  }, [fetchExams]);
+
   const renderRow = (item: Exam) => (
     <tr
       key={item.id}
@@ -67,10 +100,10 @@ const ExamListPage = () => {
               />
             </button>
           </Link>
-          {role === "admin" && (
+          {(role === "admin" || role === "teacher") && (
             <>
-              <FormModal table="exam" type="update" data={item} />
-              <FormModal table="exam" type="delete" id={item.id} />
+              <FormModal table="exam" type="update" data={item} onSuccess={fetchExams} />
+              <FormModal table="exam" type="delete" id={item.id} onSuccess={fetchExams} />
             </>
           )}
         </div>
@@ -90,7 +123,7 @@ const ExamListPage = () => {
             Manage upcoming examinations and schedules
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <TableSearch />
           <div className="flex items-center gap-3">
@@ -112,8 +145,8 @@ const ExamListPage = () => {
                 className="opacity-70"
               />
             </button>
-            {role === "admin" && (
-              <FormModal table="lesson" type="create" />
+            {(role === "admin" || role === "teacher") && (
+              <FormModal table="exam" type="create" onSuccess={fetchExams} />
             )}
           </div>
         </div>
@@ -124,13 +157,13 @@ const ExamListPage = () => {
         <Table
           columns={columns}
           renderRow={renderRow}
-          data={examsData}
+          data={liveExams}
         />
       </div>
 
       {/* PAGINATION */}
       <div className="mt-8">
-        <Pagination />
+        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
       </div>
     </div>
   );

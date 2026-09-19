@@ -2,18 +2,15 @@
 
 # dependencies
 /node_modules
+/backend/node_modules
+/backend/dist
 /.pnp
-<<<<<<< HEAD
-.pnp.js
-.yarn/install-state.gz
-=======
 .pnp.*
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
->>>>>>> f53ac0e5fbd947c53a2bb9117ae78f639112e7aa
 
 # testing
 /coverage
@@ -33,20 +30,18 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-<<<<<<< HEAD
-
-# local env files
-.env
-.env*.local
-=======
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
 .env*
->>>>>>> f53ac0e5fbd947c53a2bb9117ae78f639112e7aa
+!.env.example
+!backend/.env.example
 
 # vercel
 .vercel
+
+# supabase CLI local cache
+/supabase/.temp
 
 # typescript
 *.tsbuildinfo

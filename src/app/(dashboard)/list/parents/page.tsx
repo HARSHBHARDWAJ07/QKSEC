@@ -1,19 +1,34 @@
+"use client";
+
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
 import FormModal from "@/components/FormModal";
 import Image from "next/image";
 import Table from "@/components/Table";
-import { parentsData, role } from "@/lib/data";
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import type { PaginationMeta, ParentRecord } from "@/lib/api";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 type Parent = {
-  id: number;
+  id: number | string;
   name: string;
   email?: string;
   students: string[];
   phone?: string;
   address: string;
 };
+
+function mapParent(record: ParentRecord): Parent {
+  return {
+    id: record.id,
+    name: record.profiles ? `${record.profiles.first_name} ${record.profiles.last_name}` : "Unnamed parent",
+    students: [],
+    phone: record.profiles?.phone ?? undefined,
+    address: record.profiles?.address ?? "N/A",
+  };
+}
 
 const columns = [
   {
@@ -42,6 +57,24 @@ const columns = [
 ];
 
 const ParentListPage = () => {
+  const { role } = useCurrentUser();
+  const [liveParents, setLiveParents] = useState<Parent[]>([]);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+
+  const fetchParents = useCallback(() => {
+    apiFetch<{ data: ParentRecord[]; meta: PaginationMeta }>(`/parents?page=${page}`)
+      .then((response) => {
+        setLiveParents(response.data.map(mapParent));
+        setMeta(response.meta);
+      })
+      .catch(() => undefined);
+  }, [page]);
+
+  useEffect(() => {
+    fetchParents();
+  }, [fetchParents]);
+
   const renderRow = (item: Parent) => (
     <tr
       key={item.id}
@@ -96,8 +129,8 @@ const ParentListPage = () => {
           </Link>
           {role === "admin" && (
             <>
-              <FormModal table="parent" type="update" data={item} />
-              <FormModal table="parent" type="delete" id={item.id} />
+              <FormModal table="parent" type="update" data={item} onSuccess={fetchParents} />
+              <FormModal table="parent" type="delete" id={item.id} onSuccess={fetchParents} />
             </>
           )}
         </div>
@@ -117,7 +150,7 @@ const ParentListPage = () => {
             Manage parent information and connections
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <TableSearch />
           <div className="flex items-center gap-3">
@@ -140,7 +173,7 @@ const ParentListPage = () => {
               />
             </button>
             {role === "admin" && (
-              <FormModal table="parent" type="create" />
+              <FormModal table="parent" type="create" onSuccess={fetchParents} />
             )}
           </div>
         </div>
@@ -151,13 +184,13 @@ const ParentListPage = () => {
         <Table
           columns={columns}
           renderRow={renderRow}
-          data={parentsData}
+          data={liveParents}
         />
       </div>
 
       {/* PAGINATION */}
       <div className="mt-8">
-        <Pagination />
+        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
       </div>
     </div>
   );

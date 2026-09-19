@@ -1,17 +1,31 @@
+"use client";
+
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
 import Image from "next/image";
 import Table from "@/components/Table";
-import { lessonsData, role } from "@/lib/data";
 import Link from "next/link";
 import FormModal from "@/components/FormModal";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import type { PaginationMeta, LessonRecord } from "@/lib/api";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 type Lesson = {
-  id: number;
+  id: number | string;
   subject: string;
-  class: number;
-  teacher: number;
+  class: number | string;
+  teacher: number | string;
 };
+
+function mapLesson(record: LessonRecord): Lesson {
+  return {
+    id: record.id,
+    subject: record.subjects?.name ?? record.subject_id,
+    class: record.classes?.name ?? record.class_id,
+    teacher: record.teachers?.employee_number ?? record.teacher_id,
+  };
+}
 
 const columns = [
   {
@@ -34,6 +48,24 @@ const columns = [
 ];
 
 const LessonListPage = () => {
+  const { role } = useCurrentUser();
+  const [liveLessons, setLiveLessons] = useState<Lesson[]>([]);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+
+  const fetchLessons = useCallback(() => {
+    apiFetch<{ data: LessonRecord[]; meta: PaginationMeta }>(`/lessons?page=${page}`)
+      .then((response) => {
+        setLiveLessons(response.data.map(mapLesson));
+        setMeta(response.meta);
+      })
+      .catch(() => undefined);
+  }, [page]);
+
+  useEffect(() => {
+    fetchLessons();
+  }, [fetchLessons]);
+
   const renderRow = (item: Lesson) => (
     <tr
       key={item.id}
@@ -62,8 +94,8 @@ const LessonListPage = () => {
           </Link>
           {role === "admin" && (
             <>
-              <FormModal table="lesson" type="update" data={item} />
-              <FormModal table="lesson" type="delete" id={item.id} />
+              <FormModal table="lesson" type="update" data={item} onSuccess={fetchLessons} />
+              <FormModal table="lesson" type="delete" id={item.id} onSuccess={fetchLessons} />
             </>
           )}
         </div>
@@ -83,7 +115,7 @@ const LessonListPage = () => {
             Manage curriculum and teaching materials
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <TableSearch />
           <div className="flex items-center gap-3">
@@ -106,7 +138,7 @@ const LessonListPage = () => {
               />
             </button>
             {role === "admin" && (
-              <FormModal table="lesson" type="create" />
+              <FormModal table="lesson" type="create" onSuccess={fetchLessons} />
             )}
           </div>
         </div>
@@ -117,13 +149,13 @@ const LessonListPage = () => {
         <Table
           columns={columns}
           renderRow={renderRow}
-          data={lessonsData}
+          data={liveLessons}
         />
       </div>
 
       {/* PAGINATION */}
       <div className="mt-8">
-        <Pagination />
+        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
       </div>
     </div>
   );

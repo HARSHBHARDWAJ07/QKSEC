@@ -1,16 +1,29 @@
+"use client";
+
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
 import Image from "next/image";
 import Table from "@/components/Table";
-import { role, subjectsData } from "@/lib/data";
 import Link from "next/link";
 import FormModal from "@/components/FormModal";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import type { PaginationMeta, SubjectRecord } from "@/lib/api";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 type Subject = {
-  id: number;
+  id: number | string;
   name: string;
   teachers: string[];
 };
+
+function mapSubject(record: SubjectRecord): Subject {
+  return {
+    id: record.id,
+    name: record.name,
+    teachers: [],
+  };
+}
 
 const columns = [
   {
@@ -29,9 +42,27 @@ const columns = [
 ];
 
 const SubjectListPage = () => {
+  const { role } = useCurrentUser();
+  const [liveSubjects, setLiveSubjects] = useState<Subject[]>([]);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+
+  const fetchSubjects = useCallback(() => {
+    apiFetch<{ data: SubjectRecord[]; meta: PaginationMeta }>(`/subjects?page=${page}`)
+      .then((response) => {
+        setLiveSubjects(response.data.map(mapSubject));
+        setMeta(response.meta);
+      })
+      .catch(() => undefined);
+  }, [page]);
+
+  useEffect(() => {
+    fetchSubjects();
+  }, [fetchSubjects]);
+
   const renderRow = (item: Subject) => (
-    <tr 
-      key={item.id} 
+    <tr
+      key={item.id}
       className="border-b border-lamaSkyLight/30 hover:bg-lamaPurpleLight/10 transition-colors duration-200"
     >
       <td className="p-4">
@@ -53,8 +84,8 @@ const SubjectListPage = () => {
       <td className="p-4 text-lamaSky/80 hidden md:table-cell">
         <div className="flex flex-wrap gap-2">
           {item.teachers.map((teacher, idx) => (
-            <span 
-              key={idx} 
+            <span
+              key={idx}
               className="bg-lamaSkyLight/50 text-lamaSky text-xs px-2.5 py-1 rounded-full"
             >
               {teacher}
@@ -80,8 +111,8 @@ const SubjectListPage = () => {
           </Link>
           {role === "admin" && (
             <>
-              <FormModal table="subject" type="update" data={item} />
-              <FormModal table="subject" type="delete" id={item.id} />
+              <FormModal table="subject" type="update" data={item} onSuccess={fetchSubjects} />
+              <FormModal table="subject" type="delete" id={item.id} onSuccess={fetchSubjects} />
             </>
           )}
         </div>
@@ -101,7 +132,7 @@ const SubjectListPage = () => {
             Curriculum subjects and assigned teachers
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <TableSearch />
           <div className="flex items-center gap-3">
@@ -124,7 +155,7 @@ const SubjectListPage = () => {
               />
             </button>
             {role === "admin" && (
-              <FormModal table="subject" type="create" />
+              <FormModal table="subject" type="create" onSuccess={fetchSubjects} />
             )}
           </div>
         </div>
@@ -135,13 +166,13 @@ const SubjectListPage = () => {
         <Table
           columns={columns}
           renderRow={renderRow}
-          data={subjectsData}
+          data={liveSubjects}
         />
       </div>
 
       {/* PAGINATION */}
       <div className="mt-8">
-        <Pagination />
+        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
       </div>
     </div>
   );

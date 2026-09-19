@@ -1,19 +1,36 @@
+"use client";
+
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
 import Image from "next/image";
 import Table from "@/components/Table";
-import { eventsData, role } from "@/lib/data";
-import Link from "next/link";
 import FormModal from "@/components/FormModal";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import type { PaginationMeta, EventRecord } from "@/lib/api";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 type Event = {
-  id: number;
+  id: number | string;
   title: string;
-  class: number;
+  class: number | string;
   date: string;
   startTime: string;
   endTime: string;
 };
+
+function mapEvent(record: EventRecord): Event {
+  const starts = new Date(record.starts_at);
+  const ends = new Date(record.ends_at);
+  return {
+    id: record.id,
+    title: record.title,
+    class: record.class_id ?? "All",
+    date: starts.toLocaleDateString(),
+    startTime: starts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    endTime: ends.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  };
+}
 
 const columns = [
   {
@@ -46,6 +63,24 @@ const columns = [
 ];
 
 const EventListPage = () => {
+  const { role } = useCurrentUser();
+  const [liveEvents, setLiveEvents] = useState<Event[]>([]);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+
+  const fetchEvents = useCallback(() => {
+    apiFetch<{ data: EventRecord[]; meta: PaginationMeta }>(`/events?page=${page}`)
+      .then((response) => {
+        setLiveEvents(response.data.map(mapEvent));
+        setMeta(response.meta);
+      })
+      .catch(() => undefined);
+  }, [page]);
+
+  useEffect(() => {
+    fetchEvents();
+  }, [fetchEvents]);
+
   const renderRow = (item: Event) => (
     <tr
       key={item.id}
@@ -62,28 +97,12 @@ const EventListPage = () => {
       </td>
       <td className="p-4">
         <div className="flex items-center gap-3">
-            <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-lamaSkyLight shadow-sm hover:shadow-md transition-all duration-200">
-                         <Image
-                           src="/filter.png"
-                           alt="Filter"
-                           width={18}
-                           height={18}
-                           className="opacity-70"
-                         />
-                       </button>
-                       <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-lamaSkyLight shadow-sm hover:shadow-md transition-all duration-200">
-                         <Image
-                           src="/sort.png"
-                           alt="Sort"
-                           width={18}
-                           height={18}
-                           className="opacity-70"
-                         />
-                       </button>
-                       {role === "admin" && (
-                         <FormModal table="lesson" type="create" />
-                       )}
-        
+          {role === "admin" && (
+            <>
+              <FormModal table="event" type="update" data={item} onSuccess={fetchEvents} />
+              <FormModal table="event" type="delete" id={item.id} onSuccess={fetchEvents} />
+            </>
+          )}
         </div>
       </td>
     </tr>
@@ -101,7 +120,7 @@ const EventListPage = () => {
             View and manage upcoming school events
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <TableSearch />
           <div className="flex items-center gap-3">
@@ -124,14 +143,7 @@ const EventListPage = () => {
               />
             </button>
             {role === "admin" && (
-              <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-lamaYellow hover:bg-lamaYellow/90 shadow-sm hover:shadow-md transition-all duration-200">
-                <Image
-                  src="/plus.png"
-                  alt="Add Event"
-                  width={18}
-                  height={18}
-                />
-              </button>
+              <FormModal table="event" type="create" onSuccess={fetchEvents} />
             )}
           </div>
         </div>
@@ -142,13 +154,13 @@ const EventListPage = () => {
         <Table
           columns={columns}
           renderRow={renderRow}
-          data={eventsData}
+          data={liveEvents}
         />
       </div>
 
       {/* PAGINATION */}
       <div className="mt-8">
-        <Pagination />
+        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
       </div>
     </div>
   );

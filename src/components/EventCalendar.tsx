@@ -2,6 +2,8 @@
 import Image from "next/image";
 import { title } from "process";
 import { useState } from "react";
+import { useEffect } from "react";
+import { apiFetch, EventRecord } from "@/lib/api";
 import Calendar from "react-calendar";
 import 'react-calendar/dist/Calendar.css';
 
@@ -32,6 +34,21 @@ type Value = ValuePiece | [ValuePiece , ValuePiece ];
 
  const EventCalendar = () => {
     const [value , onChange] = useState<Value>(new Date());
+    const [liveEvents, setLiveEvents] = useState<EventRecord[]>([]);
+
+    useEffect(() => {
+      apiFetch<{ data: EventRecord[] }>("/events")
+        .then((response) => setLiveEvents(response.data.slice(0, 3)))
+        .catch(() => undefined);
+    }, []);
+
+    const displayedEvents = liveEvents.length > 0 ? liveEvents.map((event) => ({
+      id: event.id,
+      title: event.title,
+      time: new Date(event.starts_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      description: event.description ?? "School event",
+    })) : events;
+
   return (
     <div className="bg-white p-4 rounded-md">
         <div className="flex items-center justify-between">
@@ -40,7 +57,7 @@ type Value = ValuePiece | [ValuePiece , ValuePiece ];
         </div>
        <Calendar  onChange={onChange} value={value} />
        <div className="flex flex-col gap-4">
-       {events.map(event =>( 
+      {displayedEvents.map(event =>( 
         <div className="p-4 rounded-md border-2 border-gray-100 border-t-4 odd:border-t-lamaSky even:border-t-lamaPurple" key={event.id} > 
         <div className="flex items-center justify-between">
         <h1 className="font-somibold text-gray-600">

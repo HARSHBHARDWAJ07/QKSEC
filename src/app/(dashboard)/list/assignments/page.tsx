@@ -1,17 +1,32 @@
+"use client";
+
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
 import Image from "next/image";
 import Table from "@/components/Table";
-import { assignmentsData, role } from "@/lib/data";
-import Link from "next/link";
+import FormModal from "@/components/FormModal";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import type { PaginationMeta, AssignmentRecord } from "@/lib/api";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 type Assignment = {
-  id: number;
+  id: number | string;
   subject: string;
-  class: number;
-  teacher: number;
+  class: number | string;
+  teacher: number | string;
   dueDate: string;
 };
+
+function mapAssignment(record: AssignmentRecord): Assignment {
+  return {
+    id: record.id,
+    subject: record.title,
+    class: record.lesson_id,
+    teacher: record.created_by ?? "-",
+    dueDate: new Date(record.due_at).toLocaleDateString(),
+  };
+}
 
 const columns = [
   {
@@ -39,6 +54,24 @@ const columns = [
 ];
 
 const AssignmentListPage = () => {
+  const { role } = useCurrentUser();
+  const [liveAssignments, setLiveAssignments] = useState<Assignment[]>([]);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+
+  const fetchAssignments = useCallback(() => {
+    apiFetch<{ data: AssignmentRecord[]; meta: PaginationMeta }>(`/assignments?page=${page}`)
+      .then((response) => {
+        setLiveAssignments(response.data.map(mapAssignment));
+        setMeta(response.meta);
+      })
+      .catch(() => undefined);
+  }, [page]);
+
+  useEffect(() => {
+    fetchAssignments();
+  }, [fetchAssignments]);
+
   const renderRow = (item: Assignment) => (
     <tr
       key={item.id}
@@ -54,30 +87,11 @@ const AssignmentListPage = () => {
       </td>
       <td className="p-4">
         <div className="flex items-center gap-3">
-          <Link href={`/list/teachers/${item.id}`} passHref>
-            <button
-              type="button"
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-lamaSkyLight shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              <Image
-                src="/edit.png"
-                alt="Edit Assignment"
-                width={16}
-                height={16}
-                className="opacity-70"
-              />
-            </button>
-          </Link>
-          {role === "admin" && (
-            <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-lamaSkyLight shadow-sm hover:shadow-md transition-all duration-200">
-              <Image
-                src="/delete.png"
-                alt="Delete Assignment"
-                width={16}
-                height={16}
-                className="opacity-70"
-              />
-            </button>
+          {(role === "admin" || role === "teacher") && (
+            <>
+              <FormModal table="assignment" type="update" data={item} onSuccess={fetchAssignments} />
+              <FormModal table="assignment" type="delete" id={item.id} onSuccess={fetchAssignments} />
+            </>
           )}
         </div>
       </td>
@@ -96,7 +110,7 @@ const AssignmentListPage = () => {
             Manage and track class assignments
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <TableSearch />
           <div className="flex items-center gap-3">
@@ -118,15 +132,8 @@ const AssignmentListPage = () => {
                 className="opacity-70"
               />
             </button>
-            {role === "admin" && (
-              <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-lamaYellow hover:bg-lamaYellow/90 shadow-sm hover:shadow-md transition-all duration-200">
-                <Image
-                  src="/plus.png"
-                  alt="Add Assignment"
-                  width={18}
-                  height={18}
-                />
-              </button>
+            {(role === "admin" || role === "teacher") && (
+              <FormModal table="assignment" type="create" onSuccess={fetchAssignments} />
             )}
           </div>
         </div>
@@ -137,13 +144,13 @@ const AssignmentListPage = () => {
         <Table
           columns={columns}
           renderRow={renderRow}
-          data={assignmentsData}
+          data={liveAssignments}
         />
       </div>
 
       {/* PAGINATION */}
       <div className="mt-8">
-        <Pagination />
+        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
       </div>
     </div>
   );

@@ -1,0 +1,65 @@
+# Render Blueprint for QKSEC.
+#
+# Two services, matching the existing local architecture:
+#   - qksec-backend  : Fastify + Supabase REST API (backend/)
+#   - qksec-frontend : Next.js static export (output: 'export'), served as a
+#                       Render static site — the app is fully client-rendered
+#                       and only ever talks to qksec-backend over REST, so no
+#                       Node server is needed for the frontend.
+#
+# First-time setup after connecting this repo as a Blueprint in the Render
+# dashboard:
+#   1. Render will prompt for every env var below marked `sync: false`
+#      (the Supabase credentials + seed password) — paste in the same
+#      values from backend/.env. These are never stored in this file.
+#   2. If you rename either service below, update the two hardcoded
+#      cross-service URLs (FRONTEND_URL and NEXT_PUBLIC_API_URL) to match —
+#      Render assigns `https://<name>.onrender.com` for an available name,
+#      only falling back to a random suffix if that subdomain is already
+#      taken by someone else on Render.
+#   3. Run `npm run db:seed` locally (or via a Render shell) once against
+#      the same Supabase project to seed baseline data, same as local dev.
+
+services:
+  - type: web
+    name: qksec-backend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: FRONTEND_URL
+        value: https://qksec-frontend.onrender.com
+      - key: AUTH_COOKIE_SAME_SITE
+        value: none
+      - key: RATE_LIMIT_MAX
+        value: "100"
+      - key: RATE_LIMIT_WINDOW
+        value: 1 minute
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SEED_USER_PASSWORD
+        sync: false
+
+  - type: web
+    name: qksec-frontend
+    runtime: static
+    rootDir: .
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./out
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_PUBLIC_API_URL
+        value: https://qksec-backend.onrender.com

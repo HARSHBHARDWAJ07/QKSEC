@@ -11,7 +11,7 @@ const parentpage = () => {
       <div className="w-full xl:w-2/3">
        <div className="h-full bg-white p-4 rounded-md">
         <h1 className="text-xl font-semibold">
-          Schedule (4A)
+          Schedule
         </h1>
           <BigCalendar />
       </div>  

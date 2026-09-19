@@ -1,18 +1,36 @@
+"use client";
+
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
 import FormModal from "@/components/FormModal";
 import Image from "next/image";
 import Table from "@/components/Table";
-import { classesData, role } from "@/lib/data";
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import type { PaginationMeta, ClassRecord } from "@/lib/api";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 type Class = {
-  id: number;
+  id: number | string;
   name: string;
   capacity: number;
-  grade: number;
+  grade: number | string;
   supervisor: string;
 };
+
+function mapClass(record: ClassRecord): Class {
+  const supervisorProfile = record.teachers?.profiles;
+  return {
+    id: record.id,
+    name: record.name,
+    capacity: record.capacity,
+    grade: record.grades?.level ?? record.grade_id,
+    supervisor: supervisorProfile
+      ? `${supervisorProfile.first_name} ${supervisorProfile.last_name}`
+      : "-",
+  };
+}
 
 const columns = [
   {
@@ -41,6 +59,24 @@ const columns = [
 ];
 
 const ClassListPage = () => {
+  const { role } = useCurrentUser();
+  const [liveClasses, setLiveClasses] = useState<Class[]>([]);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+
+  const fetchClasses = useCallback(() => {
+    apiFetch<{ data: ClassRecord[]; meta: PaginationMeta }>(`/classes?page=${page}`)
+      .then((response) => {
+        setLiveClasses(response.data.map(mapClass));
+        setMeta(response.meta);
+      })
+      .catch(() => undefined);
+  }, [page]);
+
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
+
   const renderRow = (item: Class) => (
     <tr
       key={item.id}
@@ -72,8 +108,8 @@ const ClassListPage = () => {
           </Link>
           {role === "admin" && (
             <>
-              <FormModal table="class" type="update" data={item} />
-              <FormModal table="class" type="delete" id={item.id} />
+              <FormModal table="class" type="update" data={item} onSuccess={fetchClasses} />
+              <FormModal table="class" type="delete" id={item.id} onSuccess={fetchClasses} />
             </>
           )}
         </div>
@@ -93,7 +129,7 @@ const ClassListPage = () => {
             Manage all academic classes and sections
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
           <TableSearch />
           <div className="flex items-center gap-3">
@@ -116,7 +152,7 @@ const ClassListPage = () => {
               />
             </button>
             {role === "admin" && (
-              <FormModal table="class" type="create" />
+              <FormModal table="class" type="create" onSuccess={fetchClasses} />
             )}
           </div>
         </div>
@@ -127,13 +163,13 @@ const ClassListPage = () => {
         <Table
           columns={columns}
           renderRow={renderRow}
-          data={classesData}
+          data={liveClasses}
         />
       </div>
 
       {/* PAGINATION */}
       <div className="mt-8">
-        <Pagination />
+        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
       </div>
     </div>
   );

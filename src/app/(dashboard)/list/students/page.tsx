@@ -1,22 +1,40 @@
+"use client";
+
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
 import FormModal from "@/components/FormModal";
 import Image from "next/image";
 import Table from "@/components/Table";
-import { role, studentsData } from "@/lib/data";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
+import type { PaginationMeta, StudentRecord, StudentsResponse } from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 type Student = {
-  id: number;
+  id: number | string;
   studentId: string;
   name: string;
   email?: string;
   photo: string;
   phone?: string;
-  grade: string;
+  grade: number | string;
   class: string;
   address: string;
 };
+
+function mapStudent(record: StudentRecord): Student {
+  return {
+    id: record.id,
+    studentId: record.student_number,
+    name: record.profiles ? `${record.profiles.first_name} ${record.profiles.last_name}` : "Unnamed student",
+    photo: record.profiles?.avatar_path || "/student.png",
+    phone: record.profiles?.phone ?? undefined,
+    grade: "-",
+    class: record.class_id,
+    address: record.profiles?.address ?? "N/A",
+  };
+}
 
 const columns = [
   { header: "Info", accessor: "info" },
@@ -44,6 +62,24 @@ const columns = [
 ];
 
 const StudentListPage = () => {
+  const { role } = useCurrentUser();
+  const [liveStudents, setLiveStudents] = useState<Student[]>([]);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+
+  const fetchStudents = useCallback(() => {
+    apiFetch<StudentsResponse>(`/students?page=${page}`)
+      .then((response) => {
+        setLiveStudents(response.data.map(mapStudent));
+        setMeta(response.meta);
+      })
+      .catch(() => undefined);
+  }, [page]);
+
+  useEffect(() => {
+    fetchStudents();
+  }, [fetchStudents]);
+
   const renderRow = (item: Student) => (
     <tr key={item.id} className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight">
       <td className="flex items-center gap-4 p-4">
@@ -65,7 +101,7 @@ const StudentListPage = () => {
       <td className="hidden lg:table-cell p-4">{item.address}</td>
       <td className="p-4">
         <div className="flex items-center gap-2">
-          <Link href={`/students/${item.id}`} passHref>
+          <Link href={`/list/students/view?id=${item.id}`} passHref>
             <button
               type="button"
               className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky"
@@ -80,7 +116,7 @@ const StudentListPage = () => {
             </button>
           </Link>
           {role === "admin" && (
-            <FormModal table="student" type="delete" id={item.id} />
+            <FormModal table="student" type="delete" id={item.id} onSuccess={fetchStudents} />
           )}
         </div>
       </td>
@@ -102,7 +138,7 @@ const StudentListPage = () => {
               <Image src="/sort.png" alt="Sort" width={16} height={16} />
             </button>
             {role === "admin" && (
-              <FormModal table="student" type="create" />
+              <FormModal table="student" type="create" onSuccess={fetchStudents} />
             )}
           </div>
         </div>
@@ -112,12 +148,12 @@ const StudentListPage = () => {
       <Table 
         columns={columns} 
         renderRow={renderRow} 
-        data={studentsData} 
+        data={liveStudents} 
       />
 
       {/* PAGINATION */}
       <div className="mt-6">
-        <Pagination />
+        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
       </div>
     </div>
   );

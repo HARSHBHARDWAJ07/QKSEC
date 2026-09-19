@@ -1,14 +1,19 @@
 // app/teachers/page.tsx
+"use client";
+
 import Pagination from "@/components/Pagination";
 import TableSearch from "@/components/TableSearch";
 import FormModal from "@/components/FormModal";
 import Image from "next/image";
 import Table from "@/components/Table";
-import { role, teachersData } from "@/lib/data";
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
+import { apiFetch, TeacherRecord } from "@/lib/api";
+import type { PaginationMeta } from "@/lib/api";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 
 type Teacher = {
-  id: number;
+  id: number | string;
   teacherId: string;
   name: string;
   email?: string;
@@ -51,6 +56,34 @@ const columns = [
 ];
 
 const TeacherListPage = () => {
+  const { role } = useCurrentUser();
+  const [liveTeachers, setLiveTeachers] = useState<Teacher[]>([]);
+  const [page, setPage] = useState(1);
+  const [meta, setMeta] = useState<PaginationMeta | null>(null);
+
+  const fetchTeachers = useCallback(() => {
+    apiFetch<{ data: TeacherRecord[]; meta: PaginationMeta }>(`/teachers?page=${page}`)
+      .then((response) => {
+        setLiveTeachers(response.data.map((teacher) => ({
+          id: teacher.id,
+          teacherId: teacher.employee_number,
+          name: teacher.profiles ? `${teacher.profiles.first_name} ${teacher.profiles.last_name}` : "Unnamed teacher",
+          email: undefined,
+          photo: teacher.profiles?.avatar_path || "/avatar.png",
+          phone: teacher.profiles?.phone ?? "N/A",
+          subjects: [],
+          classes: [],
+          address: teacher.profiles?.address ?? "N/A",
+        })));
+        setMeta(response.meta);
+      })
+      .catch(() => undefined);
+  }, [page]);
+
+  useEffect(() => {
+    fetchTeachers();
+  }, [fetchTeachers]);
+
   const renderRow = (item: Teacher) => (
     <tr
       key={item.id}
@@ -104,7 +137,7 @@ const TeacherListPage = () => {
           )}
         </div>
       </td>
-      <td className="p-4 text-lamaSky/80 hidden md:table极">
+      <td className="p-4 text-lamaSky/80 hidden md:table-cell">
         <div className="flex flex-wrap gap-1">
           {item.classes.slice(0, 2).map((cls, idx) => (
             <span
@@ -126,7 +159,7 @@ const TeacherListPage = () => {
       </td>
       <td className="p-4">
         <div className="flex items-center gap-3">
-          <Link href={`/teachers/${item.id}`} passHref>
+          <Link href={`/list/teachers/view?id=${item.id}`} passHref>
             <button
               type="button"
               className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-lamaSkyLight shadow-sm hover:shadow-md transition-all duration-200"
@@ -141,7 +174,7 @@ const TeacherListPage = () => {
             </button>
           </Link>
           {role === "admin" && (
-            <FormModal table="teacher" type="delete" id={item.id} />
+            <FormModal table="teacher" type="delete" id={item.id} onSuccess={fetchTeachers} />
           )}
         </div>
       </td>
@@ -183,14 +216,7 @@ const TeacherListPage = () => {
               />
             </button>
             {role === "admin" && (
-              <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-lamaYellow hover:bg-lamaYellow/90 shadow-sm hover:shadow-md transition-all duration-200">
-                <Image
-                  src="/plus.png"
-                  alt="Add Teacher"
-                  width={18}
-                  height={18}
-                />
-              </button>
+              <FormModal table="teacher" type="create" onSuccess={fetchTeachers} />
             )}
           </div>
         </div>
@@ -201,13 +227,13 @@ const TeacherListPage = () => {
         <Table
           columns={columns}
           renderRow={renderRow}
-          data={teachersData}
+          data={liveTeachers}
         />
       </div>
 
       {/* PAGINATION */}
       <div className="mt-8">
-        <Pagination />
+        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
       </div>
     </div>
   );
