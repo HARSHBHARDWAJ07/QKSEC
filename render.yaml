@@ -36,7 +36,7 @@ services:
       - key: NODE_VERSION
         value: "22"
       - key: FRONTEND_URL
-        value: https://qksec-frontend.onrender.com
+        value: https://qksec.onrender.com
       - key: AUTH_COOKIE_SAME_SITE
         value: none
       - key: RATE_LIMIT_MAX
