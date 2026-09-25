@@ -16,4 +16,4 @@ export const endpointByTable: Record<string, string> = {
 
 // Tables that support PATCH updates through EntityForm today. Other tables
 // still show "not implemented" until their update flow is built.
-export const updatableTables = new Set(["assignment", "lesson", "result", "announcement"]);
+export const updatableTables = new Set(["assignment", "lesson", "result", "announcement", "subject", "parent"]);

@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { AppError } from "../../common/errors/AppError.js";
 import { parseBody, parseQuery } from "../../common/http/validation.js";
+import { parsePagination, getPaginationRange, createPaginationMeta } from "../../common/utils/pagination.js";
 import { getAccessibleStudentIds, assertStudentAccess } from "../../common/services/studentAccess.js";
 import { requireRoles } from "../../common/middleware/auth.js";
 import { supabaseAdmin } from "../../config/supabase.js";
@@ -37,28 +38,40 @@ export async function attendanceRoutes(app: FastifyInstance) {
   app.get("/", {
     preHandler: [requireRoles("admin", "teacher", "student", "parent")],
   }, async (request) => {
+    const { page, pageSize } = parsePagination(request.query);
     const query = parseQuery(attendanceQuerySchema, request.query);
+    const range = getPaginationRange(page, pageSize);
     const accessibleStudentIds = await getAccessibleStudentIds(request);
 
     if (query.studentId) await assertStudentAccess(request, query.studentId);
-    if (accessibleStudentIds !== null && accessibleStudentIds.length === 0) return { data: [] };
+    if (accessibleStudentIds !== null && accessibleStudentIds.length === 0) {
+      return { data: [], meta: createPaginationMeta(page, pageSize, 0) };
+    }
 
-    let attendanceQuery = supabaseAdmin
-      .from("attendance_records")
-      .select("id, student_id, lesson_id, attendance_date, status, marked_by, created_at, updated_at")
-      .order("attendance_date", { ascending: false });
+    const SELECT = "id, student_id, lesson_id, attendance_date, status, marked_by, created_at, updated_at";
+    let listQuery = supabaseAdmin.from("attendance_records").select(SELECT).order("attendance_date", { ascending: false });
+    let countQuery = supabaseAdmin.from("attendance_records").select("id", { count: "exact", head: true });
 
     if (query.studentId) {
-      attendanceQuery = attendanceQuery.eq("student_id", query.studentId);
+      listQuery = listQuery.eq("student_id", query.studentId);
+      countQuery = countQuery.eq("student_id", query.studentId);
     } else if (accessibleStudentIds !== null) {
-      attendanceQuery = attendanceQuery.in("student_id", accessibleStudentIds);
+      listQuery = listQuery.in("student_id", accessibleStudentIds);
+      countQuery = countQuery.in("student_id", accessibleStudentIds);
     }
-    if (query.from) attendanceQuery = attendanceQuery.gte("attendance_date", query.from);
-    if (query.to) attendanceQuery = attendanceQuery.lte("attendance_date", query.to);
+    if (query.from) {
+      listQuery = listQuery.gte("attendance_date", query.from);
+      countQuery = countQuery.gte("attendance_date", query.from);
+    }
+    if (query.to) {
+      listQuery = listQuery.lte("attendance_date", query.to);
+      countQuery = countQuery.lte("attendance_date", query.to);
+    }
 
-    const { data, error } = await attendanceQuery;
-    if (error) throw new AppError(500, "FETCH_FAILED", error.message);
-    return { data: data ?? [] };
+    const [listResult, countResult] = await Promise.all([listQuery.range(range.from, range.to), countQuery]);
+    if (listResult.error) throw new AppError(500, "FETCH_FAILED", listResult.error.message);
+    if (countResult.error) throw new AppError(500, "FETCH_FAILED", countResult.error.message);
+    return { data: listResult.data ?? [], meta: createPaginationMeta(page, pageSize, countResult.count ?? 0) };
   });
 
   app.post("/", {

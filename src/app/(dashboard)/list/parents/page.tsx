@@ -18,6 +18,8 @@ type Parent = {
   students: string[];
   phone?: string;
   address: string;
+  firstName: string;
+  lastName: string;
 };
 
 function mapParent(record: ParentRecord): Parent {
@@ -27,6 +29,8 @@ function mapParent(record: ParentRecord): Parent {
     students: [],
     phone: record.profiles?.phone ?? undefined,
     address: record.profiles?.address ?? "N/A",
+    firstName: record.profiles?.first_name ?? "",
+    lastName: record.profiles?.last_name ?? "",
   };
 }
 

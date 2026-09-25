@@ -79,6 +79,11 @@ const updateFields: Record<string, Array<{ name: string; label: string; type?: s
     { name: "feedback", label: "Feedback" }, { name: "publishedAt", label: "Publish at", type: "datetime-local" },
   ],
   announcement: createFields.announcement,
+  subject: createFields.subject,
+  parent: [
+    { name: "firstName", label: "First name" }, { name: "lastName", label: "Last name" },
+    { name: "phone", label: "Phone" }, { name: "address", label: "Address" },
+  ],
 };
 
 export default function EntityForm({ table, type, data, onSuccess }: EntityFormProps) {
