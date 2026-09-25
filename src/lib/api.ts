@@ -161,18 +161,92 @@ export class ApiError extends Error {
   }
 }
 
-export async function apiFetch<T>(path: string, token?: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/v1${path}`, {
+const API_BASE = `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000"}/api/v1`;
+
+// The backend also sets httpOnly session cookies, but when the frontend and
+// backend are on different sites (two *.onrender.com subdomains), browsers
+// that block third-party cookies never send them back. So the session tokens
+// are kept here too and sent as a Bearer header on every request.
+const ACCESS_KEY = "qksec_access_token";
+const REFRESH_KEY = "qksec_refresh_token";
+
+export type SessionTokens = { accessToken: string; refreshToken: string; expiresAt?: number };
+
+function readStorage(key: string): string | null {
+  try {
+    return typeof window === "undefined" ? null : window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+export function storeSession(session: SessionTokens | undefined) {
+  if (!session) return;
+  try {
+    window.localStorage.setItem(ACCESS_KEY, session.accessToken);
+    window.localStorage.setItem(REFRESH_KEY, session.refreshToken);
+  } catch {
+    // Storage unavailable (private mode etc.) — cookies are the only fallback.
+  }
+}
+
+export function clearStoredSession() {
+  try {
+    window.localStorage.removeItem(ACCESS_KEY);
+    window.localStorage.removeItem(REFRESH_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+let refreshInFlight: Promise<boolean> | null = null;
+
+// Exchanges the stored refresh token for a new session. Concurrent 401s share
+// a single refresh request, since Supabase refresh tokens are single-use.
+function refreshStoredSession(): Promise<boolean> {
+  const refreshToken = readStorage(REFRESH_KEY);
+  if (!refreshToken) return Promise.resolve(false);
+  refreshInFlight ??= fetch(`${API_BASE}/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        clearStoredSession();
+        return false;
+      }
+      const data = await response.json() as { session?: SessionTokens };
+      storeSession(data.session);
+      return true;
+    })
+    .catch(() => false)
+    .finally(() => {
+      refreshInFlight = null;
+    });
+  return refreshInFlight;
+}
+
+export async function apiFetch<T>(path: string, token?: string, init?: RequestInit, retried = false): Promise<T> {
+  const bearer = token ?? readStorage(ACCESS_KEY) ?? undefined;
+  const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     credentials: "include",
     headers: {
       Accept: "application/json",
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
       ...init?.headers,
     },
     cache: "no-store",
   });
+
+  if (response.status === 401 && !token && !retried && !path.startsWith("/auth/sign-in") && !path.startsWith("/auth/refresh")) {
+    if (await refreshStoredSession()) {
+      return apiFetch<T>(path, token, init, true);
+    }
+  }
 
   if (!response.ok) {
     const payload = await response.json().catch(() => ({})) as ApiErrorPayload;

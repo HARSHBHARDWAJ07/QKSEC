@@ -14,7 +14,11 @@ export async function authenticateRequest(
     throw new AppError(401, "UNAUTHORIZED", "Authorization token is required");
   }
 
-  const token = cookieToken ?? authorizationHeader?.replace(/^Bearer\s+/i, "").trim();
+  // An explicit Bearer header wins over a (possibly stale) cookie.
+  const bearerToken = authorizationHeader?.startsWith("Bearer ")
+    ? authorizationHeader.replace(/^Bearer\s+/i, "").trim()
+    : undefined;
+  const token = bearerToken || cookieToken;
 
   if (!token) {
     throw new AppError(401, "UNAUTHORIZED", "Authorization token is required");

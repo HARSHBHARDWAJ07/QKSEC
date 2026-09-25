@@ -32,7 +32,21 @@ const changePasswordSchema = z.object({
   newPassword: z.string().min(8),
 });
 
-function setSessionCookies(reply: FastifyReply, session: { access_token: string; refresh_token: string }) {
+type SupabaseSession = { access_token: string; refresh_token: string; expires_at?: number };
+
+// Tokens are also returned in the body: when the frontend and backend live on
+// different sites (e.g. two *.onrender.com subdomains), browsers that block
+// third-party cookies never send the session cookies back, so the frontend
+// falls back to sending the access token as a Bearer header.
+function sessionBody(session: SupabaseSession) {
+  return {
+    accessToken: session.access_token,
+    refreshToken: session.refresh_token,
+    expiresAt: session.expires_at,
+  };
+}
+
+function setSessionCookies(reply: FastifyReply, session: SupabaseSession) {
   const cookieOptions = {
     httpOnly: true,
     // secure must be true whenever sameSite=none (browsers reject it otherwise),
@@ -60,11 +74,12 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     setSessionCookies(reply, data.session);
-    return { user: { id: data.user.id, email: data.user.email } };
+    return { user: { id: data.user.id, email: data.user.email }, session: sessionBody(data.session) };
   });
 
   app.post("/refresh", async (request, reply) => {
-    const refreshToken = request.cookies.qksec_refresh_token;
+    const bodyToken = (request.body as { refreshToken?: unknown } | undefined)?.refreshToken;
+    const refreshToken = request.cookies.qksec_refresh_token ?? bodyToken;
     const parsed = refreshSchema.safeParse({ refreshToken });
     if (!parsed.success) {
       throw new AppError(400, "VALIDATION_ERROR", "Refresh token is required", parsed.error.flatten());
@@ -78,7 +93,7 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     setSessionCookies(reply, data.session);
-    return { user: { id: data.user?.id, email: data.user?.email } };
+    return { user: { id: data.user?.id, email: data.user?.email }, session: sessionBody(data.session) };
   });
 
   app.post("/sign-out", {
