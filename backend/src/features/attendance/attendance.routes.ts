@@ -34,6 +34,22 @@ const attendanceQuerySchema = z.object({
   to: z.string().date().optional(),
 });
 
+// A student can only be marked for lessons of the class they're enrolled in.
+async function assertStudentsInLessonClass(lessonId: string, studentIds: string[]) {
+  const { data: lesson, error: lessonError } = await supabaseAdmin
+    .from("lessons").select("class_id").eq("id", lessonId).maybeSingle();
+  if (lessonError) throw new AppError(500, "FETCH_FAILED", lessonError.message);
+  if (!lesson) throw new AppError(404, "LESSON_NOT_FOUND", "Lesson not found");
+
+  const { data: students, error: studentsError } = await supabaseAdmin
+    .from("students").select("id, class_id").in("id", studentIds);
+  if (studentsError) throw new AppError(500, "FETCH_FAILED", studentsError.message);
+  const wrongClass = studentIds.filter((id) => students?.find((s) => s.id === id)?.class_id !== lesson.class_id);
+  if (wrongClass.length > 0) {
+    throw new AppError(400, "STUDENT_NOT_IN_CLASS", `${wrongClass.length} student(s) are not in this lesson's class`);
+  }
+}
+
 export async function attendanceRoutes(app: FastifyInstance) {
   app.get("/", {
     preHandler: [requireRoles("admin", "teacher", "student", "parent")],
@@ -79,6 +95,7 @@ export async function attendanceRoutes(app: FastifyInstance) {
   }, async (request, reply) => {
     const body = parseBody(attendanceSchema, request.body);
     await assertStudentAccess(request, body.studentId);
+    await assertStudentsInLessonClass(body.lessonId, [body.studentId]);
 
     const { data, error } = await supabaseAdmin
       .from("attendance_records")
@@ -110,6 +127,8 @@ export async function attendanceRoutes(app: FastifyInstance) {
         throw new AppError(403, "FORBIDDEN", `Not authorized to mark attendance for ${unauthorized.length} student(s)`);
       }
     }
+
+    await assertStudentsInLessonClass(body.lessonId, body.records.map((r) => r.studentId));
 
     const rows = body.records.map((r) => ({
       student_id: r.studentId,

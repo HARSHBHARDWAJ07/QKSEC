@@ -64,11 +64,14 @@ type ListPageProps<T> = {
   createTable?: FormTable;
   canCreate?: boolean;
   onChanged: () => void;
+  // Extra toolbar buttons (e.g. a custom create flow).
+  actions?: ReactNode;
+  emptyText?: string;
 };
 
 export default function ListPage<T>({
   title, subtitle, columns, rows, rowKey, renderCells, searchText, sortValue, sortLabel = "name",
-  loading, error, createTable, canCreate, onChanged,
+  loading, error, createTable, canCreate, onChanged, actions, emptyText = "No records yet.",
 }: ListPageProps<T>) {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
@@ -119,6 +122,7 @@ export default function ListPage<T>({
           >
             <SortIcon className="w-5 h-5" />
           </button>
+          {actions}
           {canCreate && createTable && <FormModal table={createTable} type="create" onSuccess={onChanged} />}
         </div>
       </div>
@@ -144,7 +148,7 @@ export default function ListPage<T>({
         </table>
         {!loading && visible.length === 0 && !error && (
           <p className="text-center text-sm text-gray-500 py-10">
-            {query ? `No results for "${query}".` : "No records yet."}
+            {query ? `No results for "${query}".` : emptyText}
           </p>
         )}
         {loading && rows.length === 0 && <p className="text-center text-sm text-gray-400 py-10">Loading…</p>}

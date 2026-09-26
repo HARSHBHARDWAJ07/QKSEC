@@ -1,6 +1,7 @@
 "use client";
 
 import ListPage, { Cell, useResourceList } from "@/components/ListPage";
+import TakeAttendance from "@/components/TakeAttendance";
 import { formatDate, makeResolvers, useLookups } from "@/lib/lookups";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
@@ -36,7 +37,7 @@ const AttendanceListPage = () => {
   return (
     <ListPage
       title="Attendance"
-      subtitle="Lesson attendance records (marking a student again for the same lesson and date updates it)"
+      subtitle="Lesson attendance records. Taking attendance again for the same lesson and date updates it."
       columns={columns}
       rows={list.records}
       rowKey={(r) => r.id}
@@ -45,9 +46,9 @@ const AttendanceListPage = () => {
       sortLabel="date"
       loading={list.loading}
       error={list.error}
-      createTable="attendance"
-      canCreate={canMark}
       onChanged={list.reload}
+      actions={canMark ? <TakeAttendance onSaved={list.reload} /> : undefined}
+      emptyText={canMark ? "No attendance recorded yet. Use \"Take attendance\" to mark a class." : "No attendance recorded yet."}
       renderCells={(r) => (
         <>
           <Cell><span className="font-semibold">{resolve.studentName(r.student_id)}</span></Cell>
