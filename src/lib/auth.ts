@@ -1,4 +1,5 @@
 import { apiFetch, clearStoredSession } from "./api";
+import { resetCurrentUser } from "./useCurrentUser";
 
 export async function clearSession(): Promise<void> {
   try {
@@ -7,5 +8,6 @@ export async function clearSession(): Promise<void> {
     // Treat as signed out on the client side regardless of network errors.
   } finally {
     clearStoredSession();
+    resetCurrentUser();
   }
 }

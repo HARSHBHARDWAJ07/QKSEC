@@ -1,171 +1,67 @@
 "use client";
 
-import Pagination from "@/components/Pagination";
-import TableSearch from "@/components/TableSearch";
+import ListPage, { Actions, Cell, useResourceList } from "@/components/ListPage";
 import FormModal from "@/components/FormModal";
-import Image from "next/image";
-import Table from "@/components/Table";
-import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
-import type { PaginationMeta, ExamRecord } from "@/lib/api";
+import type { ExamRecord } from "@/lib/api";
+import { formatDate, formatTime, makeResolvers, useLookups } from "@/lib/lookups";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
-type Exam = {
-  id: number | string;
-  subject: string;
-  class: number | string;
-  teacher: number | string;
-  date: string;
-};
-
-function mapExam(record: ExamRecord): Exam {
-  return {
-    id: record.id,
-    subject: record.title,
-    class: record.lesson_id,
-    teacher: record.created_by ?? "-",
-    date: new Date(record.starts_at).toLocaleDateString(),
-  };
-}
-
 const columns = [
-  {
-    header: "Subject",
-    accessor: "name",
-  },
-  {
-    header: "Class",
-    accessor: "class",
-  },
-  {
-    header: "Teacher",
-    accessor: "teacher",
-    className: "hidden md:table-cell",
-  },
-  {
-    header: "Date",
-    accessor: "date",
-    className: "hidden md:table-cell",
-  },
-  {
-    header: "Actions",
-    accessor: "action",
-  },
+  { header: "Exam" },
+  { header: "Subject", className: "hidden md:table-cell" },
+  { header: "Class", className: "hidden md:table-cell" },
+  { header: "Teacher", className: "hidden lg:table-cell" },
+  { header: "Date", className: "hidden md:table-cell" },
+  { header: "Max score", className: "hidden lg:table-cell" },
+  { header: "Actions" },
 ];
 
 const ExamListPage = () => {
   const { role } = useCurrentUser();
-  const [liveExams, setLiveExams] = useState<Exam[]>([]);
-  const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState<PaginationMeta | null>(null);
-
-  const fetchExams = useCallback(() => {
-    apiFetch<{ data: ExamRecord[]; meta: PaginationMeta }>(`/exams?page=${page}`)
-      .then((response) => {
-        setLiveExams(response.data.map(mapExam));
-        setMeta(response.meta);
-      })
-      .catch(() => undefined);
-  }, [page]);
-
-  useEffect(() => {
-    fetchExams();
-  }, [fetchExams]);
-
-  const renderRow = (item: Exam) => (
-    <tr
-      key={item.id}
-      className="border-b border-lamaSkyLight/30 hover:bg-lamaPurpleLight/10 transition-colors duration-200"
-    >
-      <td className="p-4 text-lamaSky font-medium">{item.subject}</td>
-      <td className="p-4 text-lamaSky/80">{item.class}</td>
-      <td className="p-4 text-lamaSky/70 hidden md:table-cell">
-        {item.teacher}
-      </td>
-      <td className="p-4 text-lamaSky/70 hidden md:table-cell">{item.date}</td>
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <Link href={`/list/teachers/${item.id}`} passHref>
-            <button
-              type="button"
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-lamaSkyLight shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              <Image
-                src="/edit.png"
-                alt="Edit Exam"
-                width={16}
-                height={16}
-                className="opacity-70"
-              />
-            </button>
-          </Link>
-          {(role === "admin" || role === "teacher") && (
-            <>
-              <FormModal table="exam" type="update" data={item} onSuccess={fetchExams} />
-              <FormModal table="exam" type="delete" id={item.id} onSuccess={fetchExams} />
-            </>
-          )}
-        </div>
-      </td>
-    </tr>
-  );
+  const resolve = makeResolvers(useLookups());
+  const list = useResourceList<ExamRecord>("/exams");
+  const canManage = role === "admin" || role === "teacher";
 
   return (
-    <div className="bg-lamaSkyLight p-6 rounded-xl max-w-6xl mx-auto">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-lamaSky tracking-tight">
-            Exam Schedule
-          </h1>
-          <p className="text-lamaSky/60 mt-1">
-            Manage upcoming examinations and schedules
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <TableSearch />
-          <div className="flex items-center gap-3">
-            <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-lamaSkyLight shadow-sm hover:shadow-md transition-all duration-200">
-              <Image
-                src="/filter.png"
-                alt="Filter"
-                width={18}
-                height={18}
-                className="opacity-70"
-              />
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-lamaSkyLight shadow-sm hover:shadow-md transition-all duration-200">
-              <Image
-                src="/sort.png"
-                alt="Sort"
-                width={18}
-                height={18}
-                className="opacity-70"
-              />
-            </button>
-            {(role === "admin" || role === "teacher") && (
-              <FormModal table="exam" type="create" onSuccess={fetchExams} />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* TABLE SECTION */}
-      <div className="bg-white rounded-xl border border-lamaSkyLight/30 shadow-sm overflow-hidden">
-        <Table
-          columns={columns}
-          renderRow={renderRow}
-          data={liveExams}
-        />
-      </div>
-
-      {/* PAGINATION */}
-      <div className="mt-8">
-        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
-      </div>
-    </div>
+    <ListPage
+      title="Exams"
+      subtitle="Scheduled examinations"
+      columns={columns}
+      rows={list.records}
+      rowKey={(e) => e.id}
+      searchText={(e) => `${e.title} ${resolve.lessonSubject(e.lesson_id)} ${resolve.lessonClass(e.lesson_id)} ${resolve.lessonTeacher(e.lesson_id)}`}
+      sortValue={(e) => e.starts_at}
+      sortLabel="date"
+      loading={list.loading}
+      error={list.error}
+      page={list.page}
+      totalPages={list.meta?.totalPages ?? 1}
+      onPageChange={list.setPage}
+      createTable="exam"
+      canCreate={canManage}
+      onChanged={list.reload}
+      renderCells={(e) => (
+        <>
+          <Cell>
+            <p className="font-semibold">{e.title}</p>
+            <p className="text-xs text-gray-500 md:hidden">{formatDate(e.starts_at)}</p>
+          </Cell>
+          <Cell className="hidden md:table-cell">{resolve.lessonSubject(e.lesson_id)}</Cell>
+          <Cell className="hidden md:table-cell">{resolve.lessonClass(e.lesson_id)}</Cell>
+          <Cell className="hidden lg:table-cell">{resolve.lessonTeacher(e.lesson_id)}</Cell>
+          <Cell className="hidden md:table-cell whitespace-nowrap">{formatDate(e.starts_at)} · {formatTime(e.starts_at)}</Cell>
+          <Cell className="hidden lg:table-cell">{e.max_score}</Cell>
+          <Actions>
+            {canManage ? (
+              <>
+                <FormModal table="exam" type="update" data={e} onSuccess={list.reload} />
+                <FormModal table="exam" type="delete" id={e.id} onSuccess={list.reload} />
+              </>
+            ) : <span className="text-gray-400">-</span>}
+          </Actions>
+        </>
+      )}
+    />
   );
 };
 

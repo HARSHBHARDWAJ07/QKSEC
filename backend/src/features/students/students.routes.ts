@@ -9,7 +9,7 @@ import { supabaseAdmin } from "../../config/supabase.js";
 
 // Admin/teacher: full profile including contact details
 const STUDENT_SELECT_FULL = `id, student_number, enrollment_date, active, class_id, profile_id,
-  profiles!profile_id (id, first_name, last_name, role, phone, address, avatar_path)`;
+  profiles!profile_id (id, first_name, last_name, role, phone, address, avatar_path, sex)`;
 
 // Student/parent: name and avatar only — no peer PII
 const STUDENT_SELECT_LIMITED = `id, student_number, enrollment_date, active, class_id, profile_id,

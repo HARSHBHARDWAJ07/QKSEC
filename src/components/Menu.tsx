@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 import { clearSession } from "@/lib/auth";
 
@@ -71,6 +71,12 @@ const menuItems = [
         visible: ["admin", "teacher", "student", "parent"],
       },
       {
+        icon: "/attendance.png",
+        label: "Attendance",
+        href: "/list/attendance",
+        visible: ["admin", "teacher", "student", "parent"],
+      },
+      {
         icon: "/calendar.png",
         label: "Events",
         href: "/list/events",
@@ -111,6 +117,7 @@ const menuItems = [
 
 const Menu = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const { role } = useCurrentUser();
 
   async function handleLogout() {
@@ -133,18 +140,22 @@ const Menu = () => {
                   type="button"
                   key={item.label}
                   onClick={handleLogout}
-                  className="flex items-center justify-center lg:justify-start gap-4 text-gray-500 py-2 rounded-md hover:bg-lamaSkyLight w-full"
+                  title={item.label}
+                  className="flex items-center justify-center lg:justify-start gap-4 text-gray-500 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight w-full"
                 >
                   <Image src={item.icon} alt="" width={20} height={20} />
-                  <span>{item.label}</span>
+                  <span className="hidden lg:block">{item.label}</span>
                 </button>
               )
             }
+            const active = item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href);
             return (
               <Link href={item.href} key={item.label}
-               className="flex items-center justify-center lg:justify-start lg:justify-start gap-4 text-gray-500 py-2 rounded-md hover:bg-lamaSkyLight">
+               title={item.label}
+               aria-current={active ? "page" : undefined}
+               className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight ${active ? "bg-lamaSkyLight text-lamaSky font-medium" : "text-gray-500"}`}>
               <Image src={item.icon} alt="" width={20} height ={20}  />
-              <span>{item.label}</span>
+              <span className="hidden lg:block">{item.label}</span>
               </Link>
             )
           }

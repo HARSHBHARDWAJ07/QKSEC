@@ -24,7 +24,8 @@ const Pagination = ({ page, totalPages, onPageChange }: PaginationProps) => {
             type="button"
             key={p}
             onClick={() => onPageChange(p)}
-            className={`px-2 rounded-sm ${p === page ? "bg-lamaSky" : ""}`}
+            aria-current={p === page ? "page" : undefined}
+            className={`min-w-7 px-2 py-0.5 rounded-sm ${p === page ? "bg-lamaSky text-white" : "hover:bg-slate-100"}`}
           >
             {p}
           </button>

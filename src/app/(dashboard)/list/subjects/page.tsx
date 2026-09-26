@@ -1,180 +1,60 @@
 "use client";
 
-import Pagination from "@/components/Pagination";
-import TableSearch from "@/components/TableSearch";
-import Image from "next/image";
-import Table from "@/components/Table";
-import Link from "next/link";
+import ListPage, { Actions, Cell, Chips, useResourceList } from "@/components/ListPage";
 import FormModal from "@/components/FormModal";
-import { useCallback, useEffect, useState } from "react";
-import { apiFetch } from "@/lib/api";
-import type { PaginationMeta, SubjectRecord } from "@/lib/api";
+import type { SubjectRecord } from "@/lib/api";
+import { makeResolvers, useLookups } from "@/lib/lookups";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
-type Subject = {
-  id: number | string;
-  name: string;
-  teachers: string[];
-};
-
-function mapSubject(record: SubjectRecord): Subject {
-  return {
-    id: record.id,
-    name: record.name,
-    teachers: [],
-  };
-}
-
 const columns = [
-  {
-    header: "Subject",
-    accessor: "name"
-  },
-  {
-    header: "Teachers",
-    accessor: "teachers",
-    className: "hidden md:table-cell",
-  },
-  {
-    header: "Actions",
-    accessor: "action",
-  }
+  { header: "Subject" },
+  { header: "Teachers", className: "hidden md:table-cell" },
+  { header: "Actions" },
 ];
 
 const SubjectListPage = () => {
   const { role } = useCurrentUser();
-  const [liveSubjects, setLiveSubjects] = useState<Subject[]>([]);
-  const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState<PaginationMeta | null>(null);
-
-  const fetchSubjects = useCallback(() => {
-    apiFetch<{ data: SubjectRecord[]; meta: PaginationMeta }>(`/subjects?page=${page}`)
-      .then((response) => {
-        setLiveSubjects(response.data.map(mapSubject));
-        setMeta(response.meta);
-      })
-      .catch(() => undefined);
-  }, [page]);
-
-  useEffect(() => {
-    fetchSubjects();
-  }, [fetchSubjects]);
-
-  const renderRow = (item: Subject) => (
-    <tr
-      key={item.id}
-      className="border-b border-lamaSkyLight/30 hover:bg-lamaPurpleLight/10 transition-colors duration-200"
-    >
-      <td className="p-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-lg bg-lamaYellowLight flex items-center justify-center">
-            <span className="text-lamaSky font-bold text-lg">
-              {item.name.charAt(0)}
-            </span>
-          </div>
-          <div>
-            <h3 className="font-medium text-lamaSky">{item.name}</h3>
-            <p className="text-sm text-lamaSky/60 md:hidden">
-              {item.teachers.slice(0, 2).join(", ")}
-              {item.teachers.length > 2 ? ` +${item.teachers.length - 2}` : ""}
-            </p>
-          </div>
-        </div>
-      </td>
-      <td className="p-4 text-lamaSky/80 hidden md:table-cell">
-        <div className="flex flex-wrap gap-2">
-          {item.teachers.map((teacher, idx) => (
-            <span
-              key={idx}
-              className="bg-lamaSkyLight/50 text-lamaSky text-xs px-2.5 py-1 rounded-full"
-            >
-              {teacher}
-            </span>
-          ))}
-        </div>
-      </td>
-      <td className="p-4">
-        <div className="flex items-center gap-3">
-          <Link href={`/subjects/${item.id}`} passHref>
-            <button
-              type="button"
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-lamaSkyLight shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              <Image
-                src="/view.png"
-                alt="View Subject Details"
-                width={16}
-                height={16}
-                className="opacity-70"
-              />
-            </button>
-          </Link>
-          {role === "admin" && (
-            <>
-              <FormModal table="subject" type="update" data={item} onSuccess={fetchSubjects} />
-              <FormModal table="subject" type="delete" id={item.id} onSuccess={fetchSubjects} />
-            </>
-          )}
-        </div>
-      </td>
-    </tr>
-  );
+  const resolve = makeResolvers(useLookups());
+  const list = useResourceList<SubjectRecord>("/subjects");
+  const isAdmin = role === "admin";
 
   return (
-    <div className="bg-lamaSkyLight p-6 rounded-xl max-w-6xl mx-auto">
-      {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-lamaSky tracking-tight">
-            Academic Subjects
-          </h1>
-          <p className="text-lamaSky/60 mt-1">
-            Curriculum subjects and assigned teachers
-          </p>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <TableSearch />
-          <div className="flex items-center gap-3">
-            <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-lamaSkyLight shadow-sm hover:shadow-md transition-all duration-200">
-              <Image
-                src="/filter.png"
-                alt="Filter"
-                width={18}
-                height={18}
-                className="opacity-70"
-              />
-            </button>
-            <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-white border border-lamaSkyLight shadow-sm hover:shadow-md transition-all duration-200">
-              <Image
-                src="/sort.png"
-                alt="Sort"
-                width={18}
-                height={18}
-                className="opacity-70"
-              />
-            </button>
-            {role === "admin" && (
-              <FormModal table="subject" type="create" onSuccess={fetchSubjects} />
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* TABLE SECTION */}
-      <div className="bg-white rounded-xl border border-lamaSkyLight/30 shadow-sm overflow-hidden">
-        <Table
-          columns={columns}
-          renderRow={renderRow}
-          data={liveSubjects}
-        />
-      </div>
-
-      {/* PAGINATION */}
-      <div className="mt-8">
-        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
-      </div>
-    </div>
+    <ListPage
+      title="Subjects"
+      subtitle="Curriculum subjects and the teachers who teach them"
+      columns={columns}
+      rows={list.records}
+      rowKey={(s) => s.id}
+      searchText={(s) => `${s.name} ${resolve.subjectTeachers(s.id).join(" ")}`}
+      sortValue={(s) => s.name}
+      loading={list.loading}
+      error={list.error}
+      page={list.page}
+      totalPages={list.meta?.totalPages ?? 1}
+      onPageChange={list.setPage}
+      createTable="subject"
+      canCreate={isAdmin}
+      onChanged={list.reload}
+      renderCells={(s) => (
+        <>
+          <Cell>
+            <div className="flex items-center gap-3">
+              <span className="w-9 h-9 rounded-lg bg-lamaYellowLight text-lamaSky font-bold flex items-center justify-center">{s.name.charAt(0)}</span>
+              <span className="font-semibold">{s.name}</span>
+            </div>
+          </Cell>
+          <Cell className="hidden md:table-cell"><Chips items={resolve.subjectTeachers(s.id)} max={4} /></Cell>
+          <Actions>
+            {isAdmin ? (
+              <>
+                <FormModal table="subject" type="update" data={s} onSuccess={list.reload} />
+                <FormModal table="subject" type="delete" id={s.id} onSuccess={list.reload} />
+              </>
+            ) : <span className="text-gray-400">-</span>}
+          </Actions>
+        </>
+      )}
+    />
   );
 };
 

@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, storeSession, type SessionTokens } from "@/lib/api";
+import { resetCurrentUser } from "@/lib/useCurrentUser";
 
 type SignInResponse = {
   user: unknown;
@@ -27,6 +28,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email, password }),
       });
       storeSession(response.session);
+      resetCurrentUser();
       router.push("/");
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to sign in");

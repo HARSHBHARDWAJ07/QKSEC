@@ -33,6 +33,7 @@ export type StudentRecord = {
     phone?: string | null;
     address?: string | null;
     avatar_path?: string | null;
+    sex?: "male" | "female" | null;
   } | null;
 };
 

@@ -16,7 +16,7 @@ export default function DashboardLayout({
        <Link href="/" className="flex items-centre justify-center lg:justify-start gap-2">
        <Image src="/logo.png" alt="logo" width={32} height={32} />
        <span className=" hidden lg:block font-bold">
-        Bat app
+        QKSEC
        </span>
        </Link>
        <Menu />

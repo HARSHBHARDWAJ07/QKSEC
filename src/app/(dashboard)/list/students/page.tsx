@@ -1,161 +1,74 @@
 "use client";
 
-import Pagination from "@/components/Pagination";
-import TableSearch from "@/components/TableSearch";
-import FormModal from "@/components/FormModal";
 import Image from "next/image";
-import Table from "@/components/Table";
-import Link from "next/link";
-import { apiFetch } from "@/lib/api";
-import type { PaginationMeta, StudentRecord, StudentsResponse } from "@/lib/api";
-import { useCallback, useEffect, useState } from "react";
+import ListPage, { Actions, Cell, ViewLink, useResourceList } from "@/components/ListPage";
+import FormModal from "@/components/FormModal";
+import type { StudentRecord } from "@/lib/api";
+import { makeResolvers, personName, useLookups } from "@/lib/lookups";
 import { useCurrentUser } from "@/lib/useCurrentUser";
 
-type Student = {
-  id: number | string;
-  studentId: string;
-  name: string;
-  email?: string;
-  photo: string;
-  phone?: string;
-  grade: number | string;
-  class: string;
-  address: string;
-};
-
-function mapStudent(record: StudentRecord): Student {
-  return {
-    id: record.id,
-    studentId: record.student_number,
-    name: record.profiles ? `${record.profiles.first_name} ${record.profiles.last_name}` : "Unnamed student",
-    photo: record.profiles?.avatar_path || "/student.png",
-    phone: record.profiles?.phone ?? undefined,
-    grade: "-",
-    class: record.class_id,
-    address: record.profiles?.address ?? "N/A",
-  };
-}
-
 const columns = [
-  { header: "Info", accessor: "info" },
-  { 
-    header: "Student ID",
-    accessor: "studentID",
-    className: "hidden md:table-cell",
-  },
-  {
-    header: "Grade",
-    accessor: "grade",
-    className: "hidden md:table-cell",
-  },
-  {
-    header: "Phone",
-    accessor: "phone",
-    className: "hidden lg:table-cell",
-  },
-  {
-    header: "Address",
-    accessor: "address",
-    className: "hidden lg:table-cell",
-  },
-  { header: "Actions", accessor: "action" }
+  { header: "Student" },
+  { header: "Student ID", className: "hidden md:table-cell" },
+  { header: "Class", className: "hidden md:table-cell" },
+  { header: "Grade", className: "hidden md:table-cell" },
+  { header: "Phone", className: "hidden lg:table-cell" },
+  { header: "Address", className: "hidden xl:table-cell" },
+  { header: "Actions" },
 ];
 
 const StudentListPage = () => {
   const { role } = useCurrentUser();
-  const [liveStudents, setLiveStudents] = useState<Student[]>([]);
-  const [page, setPage] = useState(1);
-  const [meta, setMeta] = useState<PaginationMeta | null>(null);
-
-  const fetchStudents = useCallback(() => {
-    apiFetch<StudentsResponse>(`/students?page=${page}`)
-      .then((response) => {
-        setLiveStudents(response.data.map(mapStudent));
-        setMeta(response.meta);
-      })
-      .catch(() => undefined);
-  }, [page]);
-
-  useEffect(() => {
-    fetchStudents();
-  }, [fetchStudents]);
-
-  const renderRow = (item: Student) => (
-    <tr key={item.id} className="border-b border-gray-200 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight">
-      <td className="flex items-center gap-4 p-4">
-        <Image 
-          src={item.photo} 
-          alt={item.name}
-          width={48} 
-          height={48} 
-          className="md:hidden xl:block w-10 h-10 rounded-full object-cover"  
-        />
-        <div className="flex flex-col">
-          <h3 className="font-semibold">{item.name}</h3>
-          <p className="text-xs text-gray-500">{item.class}</p>
-        </div>
-      </td>
-      <td className="hidden md:table-cell p-4">{item.studentId}</td>
-      <td className="hidden md:table-cell p-4">{item.grade}</td>
-      <td className="hidden lg:table-cell p-4">{item.phone || "N/A"}</td>
-      <td className="hidden lg:table-cell p-4">{item.address}</td>
-      <td className="p-4">
-        <div className="flex items-center gap-2">
-          <Link href={`/list/students/view?id=${item.id}`} passHref>
-            <button
-              type="button"
-              className="w-7 h-7 flex items-center justify-center rounded-full bg-lamaSky"
-            >
-              <Image
-                src="/view.png"
-                alt={`View ${item.name}'s details`}
-                width={16}
-                height={16}
-                priority
-              />
-            </button>
-          </Link>
-          {role === "admin" && (
-            <FormModal table="student" type="delete" id={item.id} onSuccess={fetchStudents} />
-          )}
-        </div>
-      </td>
-    </tr>
-  );
+  const lookups = useLookups();
+  const resolve = makeResolvers(lookups);
+  const list = useResourceList<StudentRecord>("/students");
+  const isAdmin = role === "admin";
 
   return (
-    <div className="bg-white p-4 rounded-md flex-1 m-4 mt-0">
-      {/* TOP SECTION */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h1 className="text-lg font-semibold text-lamaSky">All Students</h1>
-        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-          <TableSearch />
-          <div className="flex items-center gap-3">
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaSkyLight border border-lamaSkyLight/30 shadow-sm hover:shadow-md transition-all duration-200">
-              <Image src="/filter.png" alt="Filter" width={16} height={16} />
-            </button>
-            <button className="w-8 h-8 flex items-center justify-center rounded-full bg-lamaSkyLight border border-lamaSkyLight/30 shadow-sm hover:shadow-md transition-all duration-200">
-              <Image src="/sort.png" alt="Sort" width={16} height={16} />
-            </button>
-            {role === "admin" && (
-              <FormModal table="student" type="create" onSuccess={fetchStudents} />
+    <ListPage
+      title="Students"
+      subtitle="All enrolled students"
+      columns={columns}
+      rows={list.records}
+      rowKey={(s) => s.id}
+      searchText={(s) => `${personName(s.profiles)} ${s.student_number} ${resolve.className(s.class_id)} ${s.profiles?.phone ?? ""}`}
+      sortValue={(s) => personName(s.profiles)}
+      loading={list.loading}
+      error={list.error}
+      page={list.page}
+      totalPages={list.meta?.totalPages ?? 1}
+      onPageChange={list.setPage}
+      createTable="student"
+      canCreate={isAdmin}
+      onChanged={list.reload}
+      renderCells={(s) => (
+        <>
+          <Cell>
+            <div className="flex items-center gap-3">
+              <Image src={s.profiles?.avatar_path || "/avatar.png"} alt="" width={40} height={40} className="w-10 h-10 rounded-full object-cover" />
+              <div>
+                <p className="font-semibold">{personName(s.profiles, "Unnamed student")}</p>
+                <p className="text-xs text-gray-500 md:hidden">{resolve.className(s.class_id)}</p>
+              </div>
+            </div>
+          </Cell>
+          <Cell className="hidden md:table-cell">{s.student_number}</Cell>
+          <Cell className="hidden md:table-cell">{resolve.className(s.class_id)}</Cell>
+          <Cell className="hidden md:table-cell">{resolve.classGradeLevel(s.class_id) ?? "-"}</Cell>
+          <Cell className="hidden lg:table-cell">{s.profiles?.phone || "-"}</Cell>
+          <Cell className="hidden xl:table-cell">{s.profiles?.address || "-"}</Cell>
+          <Actions>
+            <ViewLink href={`/list/students/view?id=${s.id}`} label={`View ${personName(s.profiles)}`} />
+            {isAdmin && (
+              <>
+                <FormModal table="student" type="update" data={s} onSuccess={list.reload} />
+                <FormModal table="student" type="delete" id={s.id} onSuccess={list.reload} />
+              </>
             )}
-          </div>
-        </div>
-      </div>
-
-      {/* TABLE SECTION */}
-      <Table 
-        columns={columns} 
-        renderRow={renderRow} 
-        data={liveStudents} 
-      />
-
-      {/* PAGINATION */}
-      <div className="mt-6">
-        <Pagination page={page} totalPages={meta?.totalPages ?? 1} onPageChange={setPage} />
-      </div>
-    </div>
+          </Actions>
+        </>
+      )}
+    />
   );
 };
 
