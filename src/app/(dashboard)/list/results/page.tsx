@@ -48,9 +48,6 @@ const ResultListPage = () => {
       sortLabel="student"
       loading={list.loading}
       error={list.error}
-      page={list.page}
-      totalPages={list.meta?.totalPages ?? 1}
-      onPageChange={list.setPage}
       createTable="result"
       canCreate={canEdit}
       onChanged={list.reload}

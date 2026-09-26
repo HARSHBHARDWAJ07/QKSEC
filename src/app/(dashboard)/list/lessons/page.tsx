@@ -37,9 +37,6 @@ const LessonListPage = () => {
       sortLabel="schedule"
       loading={list.loading}
       error={list.error}
-      page={list.page}
-      totalPages={list.meta?.totalPages ?? 1}
-      onPageChange={list.setPage}
       createTable="lesson"
       canCreate={isAdmin}
       onChanged={list.reload}

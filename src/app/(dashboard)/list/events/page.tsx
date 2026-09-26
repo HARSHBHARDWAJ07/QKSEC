@@ -34,9 +34,6 @@ const EventListPage = () => {
       sortLabel="date"
       loading={list.loading}
       error={list.error}
-      page={list.page}
-      totalPages={list.meta?.totalPages ?? 1}
-      onPageChange={list.setPage}
       createTable="event"
       canCreate={isAdmin}
       onChanged={list.reload}

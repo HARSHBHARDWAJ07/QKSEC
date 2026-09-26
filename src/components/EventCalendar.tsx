@@ -32,7 +32,7 @@ type Value = ValuePiece | [ValuePiece , ValuePiece ];
         <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold my-4">Events</h1>
         </div>
-       <Calendar  onChange={onChange} value={value} />
+       <Calendar onChange={onChange} value={value} formatShortWeekday={(_, date) => ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"][date.getDay()]} />
        <div className="flex flex-col gap-4 mt-4">
       {displayedEvents.length === 0 && <p className="text-sm text-gray-400">No events yet.</p>}
       {displayedEvents.map(event =>( 

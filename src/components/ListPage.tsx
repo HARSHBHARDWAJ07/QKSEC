@@ -7,37 +7,43 @@ import FormModal, { type FormTable } from "./FormModal";
 import { EyeIcon, SearchIcon, SortAscIcon, SortDescIcon } from "./Icons";
 import { apiFetch, type PaginationMeta } from "@/lib/api";
 
-// Fetches one page of a list endpoint and exposes a reload for after edits.
+const PAGE_SIZE = 20;
+
+// Loads every record of a list endpoint (100 per request, the backend max) so
+// search and sort cover the whole list; ListPage paginates on the client.
 export function useResourceList<R>(path: string) {
-  const [page, setPage] = useState(1);
   const [records, setRecords] = useState<R[]>([]);
-  const [meta, setMeta] = useState<PaginationMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const reload = useCallback(() => {
+    let cancelled = false;
     setLoading(true);
     const separator = path.includes("?") ? "&" : "?";
-    apiFetch<{ data: R[]; meta?: PaginationMeta }>(`${path}${separator}page=${page}`)
-      .then((response) => {
-        setRecords(response.data ?? []);
-        setMeta(response.meta ?? null);
+    (async () => {
+      const all: R[] = [];
+      for (let page = 1; ; page++) {
+        const response = await apiFetch<{ data: R[]; meta?: PaginationMeta }>(`${path}${separator}pageSize=100&page=${page}`);
+        all.push(...(response.data ?? []));
+        if (!response.meta || page >= response.meta.totalPages) break;
+      }
+      return all;
+    })()
+      .then((all) => {
+        if (cancelled) return;
+        setRecords(all);
         setError("");
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Unable to load data"))
-      .finally(() => setLoading(false));
-  }, [path, page]);
+      .catch((err: unknown) => !cancelled && setError(err instanceof Error ? err.message : "Unable to load data"))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
 
-  useEffect(() => {
-    reload();
-  }, [reload]);
+  useEffect(() => reload(), [reload]);
 
-  // If a delete empties the last page, step back a page.
-  useEffect(() => {
-    if (meta && page > 1 && page > meta.totalPages) setPage(Math.max(meta.totalPages, 1));
-  }, [meta, page]);
-
-  return { records, meta, page, setPage, loading, error, reload };
+  return { records, loading, error, reload: () => void reload() };
 }
 
 export type Column = { header: string; className?: string };
@@ -55,9 +61,6 @@ type ListPageProps<T> = {
   sortLabel?: string;
   loading: boolean;
   error?: string;
-  page: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
   createTable?: FormTable;
   canCreate?: boolean;
   onChanged: () => void;
@@ -65,9 +68,10 @@ type ListPageProps<T> = {
 
 export default function ListPage<T>({
   title, subtitle, columns, rows, rowKey, renderCells, searchText, sortValue, sortLabel = "name",
-  loading, error, page, totalPages, onPageChange, createTable, canCreate, onChanged,
+  loading, error, createTable, canCreate, onChanged,
 }: ListPageProps<T>) {
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
   const visible = useMemo(() => {
@@ -80,6 +84,10 @@ export default function ListPage<T>({
       return sortDir === "asc" ? cmp : -cmp;
     });
   }, [rows, query, sortDir, searchText, sortValue]);
+
+  const totalPages = Math.max(Math.ceil(visible.length / PAGE_SIZE), 1);
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const SortIcon = sortDir === "asc" ? SortAscIcon : SortDescIcon;
 
@@ -96,7 +104,7 @@ export default function ListPage<T>({
             <input
               type="search"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => { setQuery(event.target.value); setPage(1); }}
               placeholder="Search..."
               aria-label={`Search ${title}`}
               className="w-full md:w-[200px] p-2 bg-transparent outline-none"
@@ -127,7 +135,7 @@ export default function ListPage<T>({
             </tr>
           </thead>
           <tbody>
-            {visible.map((row) => (
+            {pageRows.map((row) => (
               <tr key={rowKey(row)} className="border-b border-gray-100 even:bg-slate-50 text-sm hover:bg-lamaPurpleLight">
                 {renderCells(row)}
               </tr>
@@ -136,14 +144,14 @@ export default function ListPage<T>({
         </table>
         {!loading && visible.length === 0 && !error && (
           <p className="text-center text-sm text-gray-500 py-10">
-            {query ? `No results for "${query}" on this page.` : "No records yet."}
+            {query ? `No results for "${query}".` : "No records yet."}
           </p>
         )}
         {loading && rows.length === 0 && <p className="text-center text-sm text-gray-400 py-10">Loading…</p>}
       </div>
 
       <div className="mt-4">
-        <Pagination page={page} totalPages={totalPages} onPageChange={onPageChange} />
+        <Pagination page={currentPage} totalPages={totalPages} onPageChange={setPage} />
       </div>
     </div>
   );

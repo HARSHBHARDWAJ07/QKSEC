@@ -191,6 +191,7 @@ const AdminDashboard = () => {
           <Calendar
             onChange={(value) => value instanceof Date && setSelectedDay(value)}
             value={selectedDay}
+            formatShortWeekday={(_, date) => ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"][date.getDay()]}
             tileClassName={({ date }) => (eventDays.has(isoDate(date)) ? "font-bold !text-lamaPurple underline" : undefined)}
           />
           <p className="text-xs text-gray-500 mt-4 mb-2">

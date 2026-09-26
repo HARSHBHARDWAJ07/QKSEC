@@ -35,9 +35,6 @@ const ClassListPage = () => {
       sortValue={(c) => c.name}
       loading={list.loading}
       error={list.error}
-      page={list.page}
-      totalPages={list.meta?.totalPages ?? 1}
-      onPageChange={list.setPage}
       createTable="class"
       canCreate={isAdmin}
       onChanged={list.reload}

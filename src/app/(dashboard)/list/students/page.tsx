@@ -35,9 +35,6 @@ const StudentListPage = () => {
       sortValue={(s) => personName(s.profiles)}
       loading={list.loading}
       error={list.error}
-      page={list.page}
-      totalPages={list.meta?.totalPages ?? 1}
-      onPageChange={list.setPage}
       createTable="student"
       canCreate={isAdmin}
       onChanged={list.reload}

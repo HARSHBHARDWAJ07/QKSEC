@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { apiFetch, ApiError } from "@/lib/api";
+import { resetCurrentUser } from "@/lib/useCurrentUser";
 
 type MeResponse = {
   user: { id: string; email?: string; role?: string };
@@ -29,7 +30,8 @@ const schema = z.object({
   phone: z.string().trim().optional(),
   address: z.string().trim().optional(),
   dateOfBirth: z.string().trim().optional(),
-  sex: z.enum(["male", "female"]).optional(),
+  // "" is the "Not set" option.
+  sex: z.union([z.enum(["male", "female"]), z.literal("")]).optional(),
   bloodType: z.string().trim().optional(),
 });
 
@@ -61,7 +63,7 @@ export default function ProfilePage() {
           phone: data.profile.phone ?? "",
           address: data.profile.address ?? "",
           dateOfBirth: data.profile.date_of_birth ?? "",
-          sex: data.profile.sex ?? undefined,
+          sex: data.profile.sex ?? "",
           bloodType: data.profile.blood_type ?? "",
         });
       })
@@ -89,11 +91,12 @@ export default function ProfilePage() {
           phone: values.phone || null,
           address: values.address || null,
           dateOfBirth: values.dateOfBirth || null,
-          sex: values.sex ?? null,
+          sex: values.sex || null,
           bloodType: values.bloodType || null,
         }),
       });
       setMe((prev) => (prev ? { ...prev, profile: response.data } : prev));
+      resetCurrentUser();
       setStatus({ type: "success", message: "Profile updated successfully." });
     } catch (error) {
       setStatus({

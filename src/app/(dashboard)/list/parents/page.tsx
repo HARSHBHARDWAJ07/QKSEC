@@ -53,9 +53,6 @@ const ParentListPage = () => {
       sortValue={(p) => personName(p.profiles)}
       loading={list.loading}
       error={list.error}
-      page={list.page}
-      totalPages={list.meta?.totalPages ?? 1}
-      onPageChange={list.setPage}
       createTable="parent"
       canCreate={isAdmin}
       onChanged={list.reload}
