@@ -141,10 +141,19 @@ export function makeResolvers(lookups: Lookups) {
       const cls = classId ? classes.get(classId) : undefined;
       return cls?.grades?.level ?? (cls ? grades.get(cls.grade_id)?.level : undefined);
     },
-    // A teacher's subjects and classes, derived from the lessons they teach.
-    teacherSubjects: (teacherId: string) => unique(lookups.lessons.filter((l) => l.teacher_id === teacherId).map((l) => l.subjects?.name ?? subjectName(l.subject_id))),
-    teacherClasses: (teacherId: string) => unique(lookups.lessons.filter((l) => l.teacher_id === teacherId).map((l) => l.classes?.name ?? className(l.class_id))),
-    subjectTeachers: (subjectId: string) => unique(lookups.lessons.filter((l) => l.subject_id === subjectId).map((l) => teacherName(l.teacher_id))),
+    // A teacher's subjects/classes: explicit assignments plus what they teach in lessons.
+    teacherSubjects: (teacherId: string) => unique([
+      ...(teachers.get(teacherId)?.teacher_subjects ?? []).map((ts) => subjectName(ts.subject_id)),
+      ...lookups.lessons.filter((l) => l.teacher_id === teacherId).map((l) => l.subjects?.name ?? subjectName(l.subject_id)),
+    ]),
+    teacherClasses: (teacherId: string) => unique([
+      ...(teachers.get(teacherId)?.teacher_classes ?? []).map((tc) => className(tc.class_id)),
+      ...lookups.lessons.filter((l) => l.teacher_id === teacherId).map((l) => l.classes?.name ?? className(l.class_id)),
+    ]),
+    subjectTeachers: (subjectId: string) => unique([
+      ...lookups.teachers.filter((t) => t.teacher_subjects?.some((ts) => ts.subject_id === subjectId)).map((t) => personName(t.profiles)),
+      ...lookups.lessons.filter((l) => l.subject_id === subjectId).map((l) => teacherName(l.teacher_id)),
+    ]),
   };
 }
 

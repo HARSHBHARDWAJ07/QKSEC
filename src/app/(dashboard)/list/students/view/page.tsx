@@ -8,6 +8,9 @@ import Performance from "@/components/Performance";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import FormModal from "@/components/FormModal";
+import { MapPinIcon } from "@/components/Icons";
+import { useCurrentUser } from "@/lib/useCurrentUser";
 import type { StudentRecord, ClassRecord } from "@/lib/api";
 
 const SingleStudentPageContent = () => {
@@ -17,6 +20,8 @@ const SingleStudentPageContent = () => {
   const [studentClass, setStudentClass] = useState<ClassRecord | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [version, setVersion] = useState(0);
+  const { role } = useCurrentUser();
 
   useEffect(() => {
     if (!id) {
@@ -33,7 +38,7 @@ const SingleStudentPageContent = () => {
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, version]);
 
   if (loading) {
     return (
@@ -97,24 +102,7 @@ const SingleStudentPageContent = () => {
                   </p>
                 </div>
                 <div className="flex gap-3">
-                  <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-lamaSkyLight border border-lamaSkyLight/30 shadow-sm hover:shadow-md transition-all duration-200">
-                    <Image
-                      src="/edit.png"
-                      alt="Edit profile"
-                      width={18}
-                      height={18}
-                      className="opacity-70"
-                    />
-                  </button>
-                  <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-lamaSkyLight border border-lamaSkyLight/30 shadow-sm hover:shadow-md transition-all duration-200">
-                    <Image
-                      src="/share.png"
-                      alt="Share profile"
-                      width={18}
-                      height={18}
-                      className="opacity-70"
-                    />
-                  </button>
+                  {role === "admin" && <FormModal table="student" type="update" data={student} onSuccess={() => setVersion((v) => v + 1)} />}
                 </div>
               </div>
 
@@ -176,13 +164,7 @@ const SingleStudentPageContent = () => {
 
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-lamaSkyLight flex items-center justify-center">
-                    <Image
-                      src="/location.png"
-                      alt="Address"
-                      width={16}
-                      height={16}
-                      className="opacity-70"
-                    />
+                    <MapPinIcon className="w-4 h-4 text-gray-500" />
                   </div>
                   <div>
                     <p className="text-xs text-lamaSky/60">Address</p>
@@ -275,7 +257,7 @@ const SingleStudentPageContent = () => {
           </div>
 
           {/* PERFORMANCE */}
-          <Performance />
+          <Performance studentId={student.id} />
 
           {/* ANNOUNCEMENTS */}
           <Announcements />

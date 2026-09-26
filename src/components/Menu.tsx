@@ -144,7 +144,7 @@ const Menu = () => {
                   className="flex items-center justify-center lg:justify-start gap-4 text-gray-500 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight w-full"
                 >
                   <Image src={item.icon} alt="" width={20} height={20} />
-                  <span className="hidden lg:block">{item.label}</span>
+                  <span className="hidden lg:block truncate">{item.label}</span>
                 </button>
               )
             }
@@ -155,7 +155,7 @@ const Menu = () => {
                aria-current={active ? "page" : undefined}
                className={`flex items-center justify-center lg:justify-start gap-4 py-2 md:px-2 rounded-md hover:bg-lamaSkyLight ${active ? "bg-lamaSkyLight text-lamaSky font-medium" : "text-gray-500"}`}>
               <Image src={item.icon} alt="" width={20} height ={20}  />
-              <span className="hidden lg:block">{item.label}</span>
+              <span className="hidden lg:block truncate">{item.label}</span>
               </Link>
             )
           }

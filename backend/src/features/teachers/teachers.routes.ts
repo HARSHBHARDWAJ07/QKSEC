@@ -8,11 +8,13 @@ import { supabaseAdmin } from "../../config/supabase.js";
 
 // Admin/teacher: full profile including contact details
 const TEACHER_SELECT_FULL = `id, employee_number, active, profile_id,
-  profiles!profile_id (id, first_name, last_name, role, phone, address, avatar_path)`;
+  profiles!profile_id (id, first_name, last_name, role, phone, address, avatar_path),
+  teacher_subjects (subject_id), teacher_classes (class_id)`;
 
 // Student/parent: name and avatar only
 const TEACHER_SELECT_LIMITED = `id, employee_number, active, profile_id,
-  profiles!profile_id (id, first_name, last_name, avatar_path)`;
+  profiles!profile_id (id, first_name, last_name, avatar_path),
+  teacher_subjects (subject_id), teacher_classes (class_id)`;
 
 const teachersQuerySchema = z.object({
   search: z.string().trim().min(1).optional(),

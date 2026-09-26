@@ -6,7 +6,7 @@ import { endpointByTable } from "@/lib/entityEndpoints";
 import { invalidateLookups, personName, useLookups, WEEKDAYS, type Lookups } from "@/lib/lookups";
 
 type FieldType = "text" | "email" | "password" | "number" | "date" | "datetime" | "time" | "textarea" | "select";
-type RefKind = "lesson" | "subject" | "class" | "teacher" | "student" | "exam" | "assignment" | "grade" | "academicYear" | "weekday" | "status";
+type RefKind = "lesson" | "subject" | "class" | "teacher" | "student" | "exam" | "assignment" | "grade" | "academicYear" | "weekday" | "status" | "sex";
 
 type Field = {
   name: string;
@@ -38,10 +38,11 @@ const accountFields: Field[] = [
   { name: "password", label: "Password (min 8 chars)", type: "password" },
 ];
 const dobField: Field = { name: "dateOfBirth", label: "Date of birth", type: "date", optional: true, nullable: true };
+const sexField: Field = ref("sex", "Sex", "sex", { optional: true, nullable: true });
 
 const createFields: Record<string, Field[]> = {
-  teacher: [...accountFields, ...profileFields, { name: "employeeNumber", label: "Employee number" }, dobField],
-  student: [...accountFields, ...profileFields, { name: "studentNumber", label: "Student number" }, ref("classId", "Class", "class"), dobField],
+  teacher: [...accountFields, ...profileFields, { name: "employeeNumber", label: "Employee number" }, dobField, sexField],
+  student: [...accountFields, ...profileFields, { name: "studentNumber", label: "Student number" }, ref("classId", "Class", "class"), dobField, sexField],
   parent: [...accountFields, ...profileFields],
   subject: [{ name: "name", label: "Subject name" }],
   class: [
@@ -91,8 +92,8 @@ const createFields: Record<string, Field[]> = {
 // Fields each backend PATCH endpoint accepts (identity fields such as a
 // result's student/exam or an exam's lesson can't be changed after creation).
 const updateFields: Record<string, Field[]> = {
-  teacher: [...profileFields, { name: "employeeNumber", label: "Employee number" }, dobField],
-  student: [...profileFields, { name: "studentNumber", label: "Student number" }, ref("classId", "Class", "class"), dobField],
+  teacher: [...profileFields, { name: "employeeNumber", label: "Employee number" }, dobField, sexField],
+  student: [...profileFields, { name: "studentNumber", label: "Student number" }, ref("classId", "Class", "class"), dobField, sexField],
   parent: profileFields,
   subject: createFields.subject,
   class: createFields.class,
@@ -128,6 +129,8 @@ function optionsFor(kind: RefKind, lookups: Lookups): Option[] {
       return lookups.academicYears.map((y) => ({ value: y.id, label: `${y.name}${y.is_current ? " (current)" : ""}` }));
     case "weekday":
       return WEEKDAYS.map((day, index) => ({ value: String(index + 1), label: day }));
+    case "sex":
+      return [{ value: "male", label: "Male" }, { value: "female", label: "Female" }];
     case "status":
       return ["present", "absent", "late", "excused"].map((s) => ({ value: s, label: s[0].toUpperCase() + s.slice(1) }));
   }

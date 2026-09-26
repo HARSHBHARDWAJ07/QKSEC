@@ -6,6 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import Performance from "@/components/Performance";
 import FormModal from "@/components/FormModal";
+import { MapPinIcon } from "@/components/Icons";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
@@ -18,6 +19,7 @@ const SingleTeacherPageContent = () => {
   const [lessonCount, setLessonCount] = useState<number | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     if (!id) {
@@ -34,7 +36,7 @@ const SingleTeacherPageContent = () => {
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, version]);
 
   if (loading) {
     return (
@@ -96,16 +98,7 @@ const SingleTeacherPageContent = () => {
                   </p>
                 </div>
                 <div className="flex gap-3">
-                  <FormModal table="teacher" type="update" id={teacher.id} />
-                  <button className="w-10 h-10 flex items-center justify-center rounded-lg bg-lamaSkyLight border border-lamaSkyLight/30 shadow-sm hover:shadow-md transition-all duration-200">
-                    <Image
-                      src="/share.png"
-                      alt="Share profile"
-                      width={18}
-                      height={18}
-                      className="opacity-70"
-                    />
-                  </button>
+                  <FormModal table="teacher" type="update" data={teacher} onSuccess={() => setVersion((v) => v + 1)} />
                 </div>
               </div>
 
@@ -161,13 +154,7 @@ const SingleTeacherPageContent = () => {
 
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-lg bg-lamaSkyLight flex items-center justify-center">
-                    <Image
-                      src="/location.png"
-                      alt="Address"
-                      width={16}
-                      height={16}
-                      className="opacity-70"
-                    />
+                    <MapPinIcon className="w-4 h-4 text-gray-500" />
                   </div>
                   <div>
                     <p className="text-xs text-lamaSky/60">Address</p>
@@ -216,7 +203,7 @@ const SingleTeacherPageContent = () => {
               >
                 <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center mb-2 group-hover:bg-lamaPurpleLight transition-colors">
                   <Image
-                    src="/students.png"
+                    src="/student.png"
                     alt="Students"
                     width={24}
                     height={24}
@@ -258,7 +245,7 @@ const SingleTeacherPageContent = () => {
           </div>
 
           {/* PERFORMANCE */}
-          <Performance />
+          <Performance teacherId={teacher.id} />
 
           {/* ANNOUNCEMENTS */}
           <Announcements />

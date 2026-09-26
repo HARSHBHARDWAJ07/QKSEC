@@ -209,7 +209,7 @@ const AdminDashboard = () => {
             ))}
           </div>
         </div>
-        <div className={card}>
+        <div className="bg-white rounded-xl shadow-sm">
           <Announcements />
         </div>
       </div>

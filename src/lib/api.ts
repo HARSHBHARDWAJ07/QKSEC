@@ -44,6 +44,8 @@ export type TeacherRecord = {
   employee_number: string;
   active: boolean;
   profile_id: string;
+  teacher_subjects?: { subject_id: string }[];
+  teacher_classes?: { class_id: string }[];
   profiles: {
     id: string;
     first_name: string;

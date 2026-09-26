@@ -37,3 +37,6 @@ export const SortAscIcon = ({ className }: IconProps) => (
 export const SortDescIcon = ({ className }: IconProps) => (
   <svg {...base(className)}><path d="M3 6h3M3 12h5M3 18h7" /><path d="M17 4v16M13 16l4 4 4-4" /></svg>
 );
+export const MapPinIcon = ({ className }: IconProps) => (
+  <svg {...base(className)}><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z" /><circle cx="12" cy="10" r="2.5" /></svg>
+);
